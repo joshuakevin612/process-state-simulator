@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Process State Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c1411;--surface:#14201b;--surface2:#1d2d26;--track:#3a5148;--ink:#e7efe9;--muted:#93a89c;--accent:#d3f26a;--accent-ink:#0c1411;
+--new:#93a89c;--ready:#f0c35a;--run:#d3f26a;--wait:#6fcde0;--term:#ee7b66;--ease:cubic-bezier(.2,.6,.2,1);--mv:.55s;--m:clamp(1rem,3vw,2.5rem)}
+*{box-sizing:border-box}
+html{color-scheme:dark;scrollbar-color:var(--surface2) transparent}
+body{margin:0;padding:var(--m);background:var(--bg);color:var(--ink);font:500 1rem/1.5 "Schibsted Grotesk",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+::selection{background:var(--accent);color:var(--accent-ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto}
+.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:2rem 3rem;flex-wrap:wrap;margin-bottom:2rem}
+h1{margin:0;font-weight:700;font-size:clamp(2.5rem,1.2rem+4.6vw,4.75rem);line-height:.95;letter-spacing:-.035em;max-width:9ch;text-wrap:balance}
+.lead{margin:1rem 0 0;max-width:44ch;color:var(--muted);font-size:1.0625rem}
+.metrics{display:grid;grid-template-columns:repeat(5,auto);gap:1.25rem 2.25rem}
+.metrics b{display:block;font-size:clamp(1.75rem,1.2rem+1.6vw,2.75rem);line-height:1;letter-spacing:-.03em;font-weight:700}
+.metrics span{color:var(--muted);font-size:.9rem}
+#m-t{color:var(--accent)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1.5rem;background:var(--surface);border-radius:14px;padding:1rem}
+.grp{display:flex;align-items:center;gap:.5rem}
+.grp>label,.grp>.lb{color:var(--muted);font-size:.9rem;margin-right:.25rem}
+button{font:inherit;font-weight:700;height:44px;padding:0 1.1rem;border:0;border-radius:10px;background:var(--surface2);color:var(--ink);cursor:pointer;transition:transform .15s var(--ease),background .2s}
+button:hover{background:#2a3f35}
+button:active{transform:scale(.96)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+button.primary{background:var(--accent);color:var(--accent-ink);min-width:92px}
+button.primary:hover{background:#e0f98a}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.q button{width:44px;padding:0;font-size:1.25rem}
+.q output{min-width:1.5ch;text-align:center;font-weight:700}
+input[type=range]{width:140px;accent-color:var(--accent)}
+#status{margin-left:auto;color:var(--muted);font-size:.95rem}
+.stage{margin-top:1rem;background:var(--surface);border-radius:14px;padding:clamp(.5rem,1.5vw,1.25rem);overflow-x:auto}
+svg{display:block;width:100%;min-width:700px;height:auto;--mv:.55s}
+svg text{font-family:inherit}
+.node rect.body{fill:var(--surface2);transition:fill .3s}
+.node.busy rect.body{fill:#2b4236}
+.nt{font-size:4.6px;font-weight:700;fill:var(--ink)}
+.nc{font-size:4.6px;font-weight:700;text-anchor:end}
+.edge path{fill:none;stroke:var(--track);stroke-width:.9;marker-end:url(#a);transition:stroke .3s}
+.edge text{font-size:3.2px;fill:var(--muted);transition:fill .3s}
+.edge .k{font-weight:700}
+.edge.on path{stroke:var(--accent);marker-end:url(#b)}
+.edge.on text{fill:var(--accent)}
+.tok{transition:transform var(--mv) var(--ease)}
+.tok text{font-size:3px;font-weight:700;fill:var(--bg);text-anchor:middle}
+h2{font-size:1.25rem;margin:2.5rem 0 .75rem;letter-spacing:-.01em}
+#gantt{display:grid;grid-template-columns:repeat(60,minmax(0,1fr));gap:2px}
+#gantt i{height:34px;border-radius:3px;background:#101a16;transition:background .3s}
+#gantt i.idle{background:var(--surface2)}
+.cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:var(--m)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0 3px;text-align:left}
+th{color:var(--muted);font-weight:500;font-size:.9rem;padding:.25rem .75rem}
+td{background:var(--surface);padding:.65rem .75rem}
+td:first-child{border-radius:8px 0 0 8px;font-weight:700}
+td:last-child{border-radius:0 8px 8px 0}
+td i{display:inline-block;width:.7em;height:.7em;border-radius:2px;margin-right:.55em}
+.note{color:var(--muted);font-size:.9rem;margin:.75rem 0 0;max-width:60ch}
+#log{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto}
+#log li{background:var(--surface);border-radius:8px;padding:.5rem .75rem;margin-bottom:3px;font-size:.95rem}
+#log li b{color:var(--muted);margin-right:.5em;font-weight:500}
+#log li em{color:var(--muted);font-style:normal;margin-left:.4em}
+#log li.rise{animation:rise .45s var(--ease)}
+.s-new{color:var(--new)}.s-ready{color:var(--ready)}.s-run{color:var(--run)}.s-wait{color:var(--wait)}.s-term{color:var(--term)}
+@keyframes rise{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.js .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s var(--ease),transform .7s var(--ease);transition-delay:calc(var(--d,0)*70ms)}
+.js .reveal.in{opacity:1;transform:none}
+@media(max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}.metrics{grid-template-columns:repeat(3,auto)}#status{margin-left:0;width:100%}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.js .reveal{opacity:1;transform:none}}
+</style>
+<script>document.documentElement.className='js'</script>
+</head>
+<body>
+<div class="wrap">
+<section class="hero">
+  <div class="reveal" style="--d:0">
+    <h1>Process state simulator</h1>
+    <p class="lead">Watch processes move between New, Ready, Running, Waiting and Terminated while the scheduler decides who gets the CPU.</p>
+  </div>
+  <div class="metrics reveal" style="--d:2" aria-live="off">
+    <div><b id="m-t">0</b><span>Tick</span></div>
+    <div><b id="m-u">0%</b><span>CPU busy</span></div>
+    <div><b id="m-w">–</b><span>Avg wait</span></div>
+    <div><b id="m-a">–</b><span>Avg turnaround</span></div>
+    <div><b id="m-c">0</b><span>Context switches</span></div>
+  </div>
+</section>
+
+<section class="bar reveal" style="--d:3">
+  <div class="grp">
+    <button id="play" class="primary">Play</button>
+    <button id="step">Step</button>
+    <button id="reset">Reset</button>
+  </div>
+  <div class="grp"><label for="speed">Speed</label><input id="speed" type="range" min="1" max="10" value="5"></div>
+  <div class="grp seg" id="algo"><span class="lb">Scheduler</span>
+    <button data-a="fcfs" aria-pressed="false">FCFS</button>
+    <button data-a="sjf" aria-pressed="false">SJF</button>
+    <button data-a="prio" aria-pressed="false">Priority</button>
+    <button data-a="rr" aria-pressed="true">Round robin</button>
+  </div>
+  <div class="grp q" id="qbox"><span class="lb">Quantum</span><button id="qm" aria-label="Decrease quantum">&minus;</button><output id="q">3</output><button id="qp" aria-label="Increase quantum">+</button></div>
+  <button id="add">Add process</button>
+  <span id="status" aria-live="polite"></span>
+</section>
+
+<section class="stage reveal" style="--d:4"><svg id="stage" viewBox="0 0 220 100" role="img" aria-label="Process state diagram with live process tokens"></svg></section>
+
+<h2 class="reveal">CPU timeline, last 60 ticks</h2>
+<div id="gantt" class="reveal" aria-label="CPU timeline"></div>
+
+<div class="cols">
+  <div class="reveal">
+    <h2>Process table</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Process</th><th>State</th><th>Arrives</th><th>CPU left</th><th title="1 is highest">Priority</th><th>Waited</th><th>Turnaround</th></tr></thead>
+      <tbody id="tb"></tbody></table></div>
+    <p class="note">Priority 1 is highest. FCFS, SJF and Priority run each CPU burst to its end. Round robin preempts a process when its quantum runs out. One I/O device serves the waiting queue in order.</p>
+  </div>
+  <div class="reveal" style="--d:1">
+    <h2>Transitions</h2>
+    <ul id="log"></ul>
+  </div>
+</div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),NS='http://www.w3.org/2000/svg';
+const W=36,H=34;
+const ST={new:{x:4,y:10,t:'New',c:'--new'},ready:{x:62,y:10,t:'Ready',c:'--ready'},run:{x:120,y:10,t:'Running',c:'--run'},term:{x:180,y:10,t:'Terminated',c:'--term'},wait:{x:91,y:62,t:'Waiting',c:'--wait'}};
+const ED={
+ admit:{d:'M40 27H61',p:[50.5,23.5,32,'middle'],n:'admit'},
+ dispatch:{d:'M98 21H119',p:[108.5,17.5,25.5,'middle'],n:'dispatch'},
+ timeout:{d:'M120 33H99',p:[109.5,37.5,41.5,'middle'],n:'timeout'},
+ exit:{d:'M156 27H179',p:[167.5,23.5,32,'middle'],n:'exit'},
+ ioreq:{d:'M146 44C146 64 140 72 128 72',p:[150,57,61,'start'],n:'I/O request'},
+ iodone:{d:'M90 72C78 72 76 62 76 45',p:[72,57,61,'end'],n:'I/O done'}};
+const PC=['#f4c95d','#7fd1ae','#8ab4f8','#f19a6f','#e8e2cf','#e58fb4','#6ed3e0','#b9d46a'];
+const cfg={algo:'rr',q:3};
+let S,playing=false,timer=null;
+
+/* static diagram */
+$('#stage').innerHTML='<defs><marker id="a" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L6 3L0 6z" fill="#3a5148"/></marker><marker id="b" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L6 3L0 6z" fill="#d3f26a"/></marker></defs>'
++Object.entries(ED).map(([k,e])=>`<g class="edge" id="e-${k}"><path d="${e.d}"/><text x="${e.p[0]}" y="${e.p[1]}" text-anchor="${e.p[3]}">${e.n}</text><text class="k" id="k-${k}" x="${e.p[0]}" y="${e.p[2]}" text-anchor="${e.p[3]}">×0</text></g>`).join('')
++Object.entries(ST).map(([k,n])=>`<g class="node" id="n-${k}"><rect class="body" x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="2.5"/><rect x="${n.x}" y="${n.y}" width="${W}" height="3" rx="1.5" style="fill:var(${n.c})"/><text class="nt" x="${n.x+3}" y="${n.y+10}">${n.t}</text><text class="nc" id="c-${k}" x="${n.x+W-3}" y="${n.y+10}" style="fill:var(${n.c})">0</text></g>`).join('')
++'<g id="toks"></g>';
+
+/* model */
+const rnd=n=>Math.floor(Math.random()*n);
+function mk(arr){
+  const id=S.procs.length+1,r=n=>n+rnd(4),b=[{k:'cpu',n:r(3)}];
+  for(let i=1+(Math.random()<.5);i--;)b.push({k:'io',n:r(2)},{k:'cpu',n:r(2)});
+  const p={id,arr,b,bi:0,cpuLeft:b[0].n,ioLeft:0,rem:b.filter(x=>x.k==='cpu').reduce((a,x)=>a+x.n,0),prio:1+rnd(4),wait:0,fin:null,state:'new'};
+  const g=document.createElementNS(NS,'g');g.setAttribute('class','tok');
+  g.innerHTML=`<circle r="3.8" fill="${PC[id-1]}"/><text y="1.1">P${id}</text>`;
+  p.el=g;$('#toks').appendChild(g);S.procs.push(p);
+  place(g,'new',S.procs.filter(x=>x.state==='new').length-1);
+}
+function init(){
+  setPlay(false);$('#toks').innerHTML='';$('#log').innerHTML='';
+  S={t:0,procs:[],ready:[],waiting:[],running:null,used:0,gantt:[],cs:0,busy:0,lit:new Set(),cnt:Object.fromEntries(Object.keys(ED).map(k=>[k,0]))};
+  [0,1,2,4,6,9].forEach(mk);
+  $('#status').textContent='Six processes are queued. Press Play or Step.';
+  render();
+}
+function fire(p,from,to,edge){
+  p.state=to;S.cnt[edge]++;S.lit.add(edge);
+  const li=document.createElement('li');li.className='rise';
+  li.innerHTML=`<b>t ${S.t}</b>P${p.id} <span class="s-${from}">${ST[from].t}</span> &rarr; <span class="s-${to}">${ST[to].t}</span><em>${ED[edge].n}</em>`;
+  const lg=$('#log');lg.prepend(li);while(lg.children.length>60)lg.lastChild.remove();
+}
+function pick(){
+  const R=S.ready;let i=0;
+  if(cfg.algo==='sjf')R.forEach((p,j)=>{if(p.cpuLeft<R[i].cpuLeft)i=j});
+  if(cfg.algo==='prio')R.forEach((p,j)=>{if(p.prio<R[i].prio)i=j});
+  return R.splice(i,1)[0];
+}
+const done=()=>S.procs.every(p=>p.state==='term');
+function tick(){
+  const t=S.t;S.lit=new Set();
+  S.procs.filter(p=>p.state==='new'&&p.arr<=t).forEach(p=>{S.ready.push(p);fire(p,'new','ready','admit')});
+  const w=S.waiting[0];
+  if(w&&--w.ioLeft<=0){S.waiting.shift();w.bi++;w.cpuLeft=w.b[w.bi].n;S.ready.push(w);fire(w,'wait','ready','iodone')}
+  const r=S.running;
+  if(r){
+    r.cpuLeft--;r.rem--;S.used++;S.busy++;S.gantt.push(r.id);
+    if(r.cpuLeft===0){
+      S.running=null;r.bi++;
+      if(r.bi>=r.b.length){r.fin=t+1;fire(r,'run','term','exit')}
+      else{r.ioLeft=r.b[r.bi].n;S.waiting.push(r);fire(r,'run','wait','ioreq')}
+    }else if(cfg.algo==='rr'&&S.used>=cfg.q&&S.ready.length){S.running=null;S.ready.push(r);fire(r,'run','ready','timeout')}
+  }else S.gantt.push(0);
+  if(!S.running&&S.ready.length){const p=pick();S.running=p;S.used=0;S.cs++;fire(p,'ready','run','dispatch')}
+  S.ready.forEach(p=>p.wait++);
+  S.t++;
+}
+
+/* view */
+function place(el,k,i){const n=ST[k];el.style.transform=`translate(${n.x+6.5+(i%4)*8}px,${n.y+17+(i>>2)*9.5}px)`}
+function render(){
+  const P=S.procs,L={
+    new:P.filter(p=>p.state==='new').sort((a,b)=>a.arr-b.arr||a.id-b.id),
+    ready:S.ready,wait:S.waiting,run:S.running?[S.running]:[],
+    term:P.filter(p=>p.state==='term').sort((a,b)=>a.fin-b.fin)};
+  for(const k in ST){
+    $('#c-'+k).textContent=L[k].length;
+    $('#n-'+k).classList.toggle('busy',k==='run'&&L.run.length>0);
+    L[k].forEach((p,i)=>place(p.el,k,i));
+  }
+  for(const e in ED){$('#e-'+e).classList.toggle('on',S.lit.has(e));$('#k-'+e).textContent='×'+S.cnt[e]}
+  $('#tb').innerHTML=P.map(p=>`<tr><td><i style="background:${PC[p.id-1]}"></i>P${p.id}</td><td class="s-${p.state}">${ST[p.state].t}</td><td>${p.arr}</td><td>${p.rem}</td><td>${p.prio}</td><td>${p.wait}</td><td>${p.fin==null?'–':p.fin-p.arr}</td></tr>`).join('');
+  const g=S.gantt.slice(-60),cells=[...Array(60-g.length).fill(-1),...g];
+  $('#gantt').innerHTML=cells.map(v=>v>0?`<i title="P${v}" style="background:${PC[v-1]}"></i>`:v===0?'<i class="idle" title="Idle"></i>':'<i></i>').join('');
+  const act=P.filter(p=>p.state!=='new'),fin=P.filter(p=>p.fin!=null),avg=(a,f)=>a.length?(a.reduce((s,p)=>s+f(p),0)/a.length).toFixed(1):'–';
+  $('#m-t').textContent=S.t;
+  $('#m-u').textContent=(S.t?Math.round(S.busy/S.t*100):0)+'%';
+  $('#m-w').textContent=avg(act,p=>p.wait);
+  $('#m-a').textContent=avg(fin,p=>p.fin-p.arr);
+  $('#m-c').textContent=S.cs;
+  $('#add').disabled=P.length>=8;
+}
+function step(){
+  if(done()){$('#status').textContent='All processes terminated. Add a process or reset.';return}
+  tick();render();
+  if(done()){setPlay(false);$('#status').textContent=`All processes terminated at tick ${S.t}.`}
+  else $('#status').textContent=S.running?`P${S.running.id} is on the CPU.`:'CPU idle.';
+}
+const iv=()=>1200-$('#speed').value*110;
+function loop(){if(!playing)return;step();if(playing)timer=setTimeout(loop,iv())}
+function setPlay(v){
+  playing=v;clearTimeout(timer);$('#play').textContent=v?'Pause':'Play';
+  document.documentElement.style.setProperty('--mv',Math.min(.55,iv()*.0008)+'s');
+  if(v)loop();
+}
+
+/* controls */
+$('#play').onclick=()=>setPlay(!playing);
+$('#step').onclick=()=>{setPlay(false);step()};
+$('#reset').onclick=init;
+$('#speed').oninput=()=>document.documentElement.style.setProperty('--mv',Math.min(.55,iv()*.0008)+'s');
+$('#add').onclick=()=>{if(S.procs.length<8){mk(S.t);render();if(done())return;$('#status').textContent=`P${S.procs.length} added.`}};
+document.querySelectorAll('#algo button').forEach(b=>b.onclick=()=>{
+  cfg.algo=b.dataset.a;
+  document.querySelectorAll('#algo button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  $('#qbox').hidden=cfg.algo!=='rr';
+});
+$('#qm').onclick=()=>{cfg.q=Math.max(1,cfg.q-1);$('#q').textContent=cfg.q};
+$('#qp').onclick=()=>{cfg.q=Math.min(8,cfg.q+1);$('#q').textContent=cfg.q};
+addEventListener('keydown',e=>{
+  if(/BUTTON|INPUT/.test(e.target.tagName))return;
+  if(e.code==='Space'){e.preventDefault();setPlay(!playing)}
+  if(e.code==='ArrowRight'){setPlay(false);step()}
+});
+
+/* entrance */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+init();
+</script>
+</body>
+</html>
